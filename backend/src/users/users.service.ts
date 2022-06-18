@@ -9,6 +9,10 @@ export class User {
   ) {}
 }
 
+export class UserDto {
+  constructor(public id: number, public username: string) {}
+}
+
 @Injectable()
 export class UsersService {
   private users = [new User(1, 'admin', 'admin')];
