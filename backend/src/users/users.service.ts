@@ -1,31 +1,63 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
+import { User as UserModel, UserDocument } from './schemas/user.schema';
 
 //TODO: вынести в модель и БД
 export class User {
   constructor(
-    public id: number,
+    public id: string,
     public username: string,
     public password: string, //TODO: хэш
   ) {}
 }
 
 export class UserDto {
-  constructor(public id: number, public username: string) {}
+  constructor(public id: string, public username: string) {}
 }
+
+export const hashRounds = 10;
 
 @Injectable()
 export class UsersService {
-  private users = [new User(1, 'admin', 'admin')];
+  constructor(
+    @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
+  ) {}
 
-  async findOne(username: string): Promise<User | undefined> {
-    return this.users.find((user) => user.username === username);
+  async findOne(username: string): Promise<User | null> {
+    const user = await this.userModel
+      .findOne({
+        username: username,
+      })
+      .exec();
+    return user ? new User(user._id, user.username, user.password) : null;
+  }
+
+  async register(username, password): Promise<User> {
+    if (await this.findOne(username)) {
+      throw new HttpException(
+        'Пользователь уже существует',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const user = await this.userModel.create({
+      username,
+      password: await this.getHashByPassword(password),
+    });
+
+    return new User(user._id, user.username, user.password);
   }
 
   async comparePasswords(
-    userPassword: string,
+    userHash: string,
     inputPassword: string,
   ): Promise<boolean> {
-    //TODO: хэширование и сравнение хэшей
-    return userPassword === inputPassword;
+    return bcrypt.compare(inputPassword, userHash);
+  }
+
+  async getHashByPassword(pass: string): Promise<string> {
+    return bcrypt.hash(pass, hashRounds);
   }
 }

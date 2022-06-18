@@ -28,4 +28,13 @@ export class AuthService {
       access_token: this.jwtService.sign(payload),
     };
   }
+
+  async register(username: string, pass: string): Promise<UserDto> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...result } = await this.userService.register(
+      username,
+      pass,
+    );
+    return result;
+  }
 }
