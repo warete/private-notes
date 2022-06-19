@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ClassSerializerInterceptor,
   Controller,
@@ -19,14 +20,29 @@ import { NoteDto } from './dto/note.dto';
 import { NoteDocument } from './schemas/note.schema';
 import { DecryptedNoteDto } from './dto/decrypted-note.dto';
 import { IpAddress } from '../ip-address.decorator';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { CreateNoteDto } from './dto/create-note.dto';
 
+@ApiTags('notes')
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('notes')
 export class NotesController {
   private readonly logger = new Logger(NotesController.name);
   constructor(private readonly notesService: NotesService) {}
 
+  @ApiBearerAuth()
   @Get()
+  @ApiOkResponse({
+    type: [NoteDto],
+  })
+  @ApiOperation({ description: 'Notes for current user' })
   async list(@CurrentUser() currentUser: UserDocument): Promise<NoteDto[]> {
     const notes = await this.notesService.getAllForUser(currentUser);
     return notes.map((item) => this.notesService.documentToDto(item));
@@ -34,6 +50,10 @@ export class NotesController {
 
   @Public()
   @Get('/:id')
+  @ApiOkResponse({
+    type: NoteDto,
+  })
+  @ApiNotFoundResponse()
   async detail(@Param('id') id: string): Promise<NoteDto> {
     const note: NoteDocument = await this.notesService.getById(id);
     if (!note || !note.body) {
@@ -44,11 +64,16 @@ export class NotesController {
 
   @Public()
   @Get('/:id/decrypt/')
+  @ApiOkResponse({
+    type: DecryptedNoteDto,
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
   async decryptById(
     @Param('id') id: string,
     @Query('key') key: string,
     @IpAddress() userIp: string,
-  ): Promise<any> {
+  ): Promise<DecryptedNoteDto> {
     const note: NoteDocument = await this.notesService.getById(id);
     if (!note || !note.body) {
       throw new NotFoundException();
@@ -81,19 +106,28 @@ export class NotesController {
     });
   }
 
+  @ApiBearerAuth()
   @Post()
+  @ApiOkResponse({
+    type: NoteDto,
+  })
   async create(
     @CurrentUser() currentUser: UserDocument,
-    @Body('text') text: string,
-    @Body('dateExpire') dateExpire: Date,
+    @Body() createNote: CreateNoteDto,
   ): Promise<NoteDto> {
+    if (!createNote.text.length) {
+      throw new BadRequestException('Empty text');
+    }
+    if (!createNote.dateExpire) {
+      throw new BadRequestException('Empty dateExpire');
+    }
     const secretKey: string = this.notesService.getRandomKey();
     //TODO: send sms or email
     console.log(secretKey);
     return this.notesService.documentToDto(
       await this.notesService.createForUser(
-        text,
-        dateExpire,
+        createNote.text,
+        createNote.dateExpire,
         secretKey,
         currentUser,
       ),

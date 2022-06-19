@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class DecryptedNoteDto {
-  constructor(partial: Partial<DecryptedNoteDto>) {
+export class UserResponseDto {
+  constructor(partial: Partial<UserResponseDto>) {
     Object.assign(this, partial);
   }
 
@@ -9,5 +9,5 @@ export class DecryptedNoteDto {
   id: string;
 
   @ApiProperty()
-  body: string;
+  username: string;
 }
