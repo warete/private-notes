@@ -4,6 +4,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Logger,
   NotFoundException,
   Param,
   Post,
@@ -17,10 +18,12 @@ import { UserDocument } from '../users/schemas/user.schema';
 import { NoteDto } from './dto/note.dto';
 import { NoteDocument } from './schemas/note.schema';
 import { DecryptedNoteDto } from './dto/decrypted-note.dto';
+import { IpAddress } from '../ip-address.decorator';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('notes')
 export class NotesController {
+  private readonly logger = new Logger(NotesController.name);
   constructor(private readonly notesService: NotesService) {}
 
   @Get()
@@ -44,12 +47,12 @@ export class NotesController {
   async decryptById(
     @Param('id') id: string,
     @Query('key') key: string,
+    @IpAddress() userIp: string,
   ): Promise<any> {
     const note: NoteDocument = await this.notesService.getById(id);
     if (!note || !note.body) {
       throw new NotFoundException();
     }
-    //TODO: залогировать
     const decryptedBody: string = await this.notesService.decryptBody(
       note.body,
       key,
@@ -63,6 +66,10 @@ export class NotesController {
       if (note.readAttemptsCount > 3) {
         note.body = null;
       }
+      this.logger.warn(
+        'User try to decrypt note. User info: ' +
+          JSON.stringify({ ip: userIp }),
+      );
       await this.notesService.update(note);
       throw new ForbiddenException();
     }
