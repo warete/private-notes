@@ -23,7 +23,8 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  async register(@Body() body) { //TODO: body to DTO
+  async register(@Body() body) {
+    //TODO: body to DTO
     return this.authService.register(body.username, body.password);
   }
 
