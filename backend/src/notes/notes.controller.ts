@@ -1,32 +1,50 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  ClassSerializerInterceptor,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseInterceptors,
+} from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { NoteDocument } from './schemas/note.schema';
 import { Public } from '../auth/public.decorator';
 import { UserDocument } from '../users/schemas/user.schema';
+import { NoteDto } from './dto/note.dto';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('notes')
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
   @Get()
-  async list(
-    @CurrentUser() currentUser: UserDocument,
-  ): Promise<NoteDocument[]> {
-    return this.notesService.getAllForUser(currentUser);
+  async list(@CurrentUser() currentUser: UserDocument): Promise<NoteDto[]> {
+    const notes = await this.notesService.getAllForUser(currentUser);
+    return notes.map((item) => this.notesService.documentToDto(item));
   }
 
   @Public()
   @Get('/:id')
-  async detail(@Param('id') id: string): Promise<NoteDocument> {
-    return this.notesService.getById(id);
+  async detail(@Param('id') id: string): Promise<NoteDto> {
+    return this.notesService.documentToDto(await this.notesService.getById(id));
   }
 
   @Post()
   async create(
     @CurrentUser() currentUser: UserDocument,
-  ): Promise<NoteDocument> {
+    @Body('text') text: string,
+    @Body('dateExpire') dateExpire: Date,
+  ): Promise<NoteDto> {
     const secretKey: string = this.notesService.getRandomKey();
-    return this.notesService.createForUser('azaza', secretKey, currentUser);
+    console.log(secretKey);
+    return this.notesService.documentToDto(
+      await this.notesService.createForUser(
+        text,
+        dateExpire,
+        secretKey,
+        currentUser,
+      ),
+    );
   }
 }

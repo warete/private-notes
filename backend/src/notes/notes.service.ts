@@ -5,6 +5,7 @@ import { Cipher, createCipheriv, randomBytes, scrypt } from 'crypto';
 import { promisify } from 'util';
 import { Note as NoteModel, NoteDocument } from './schemas/note.schema';
 import { UserDocument } from '../users/schemas/user.schema';
+import { NoteDto } from './dto/note.dto';
 
 @Injectable()
 export class NotesService {
@@ -22,11 +23,10 @@ export class NotesService {
 
   async createForUser(
     body: string,
+    dateExpire: Date,
     secretKey: string,
     user: UserDocument,
   ): Promise<NoteDocument> {
-    const dateExpire = new Date();
-    dateExpire.setDate(dateExpire.getDate() + 1);
     return this.noteModel.create({
       user: user.id,
       body: await this.cryptBody(body, secretKey),
@@ -34,10 +34,19 @@ export class NotesService {
     });
   }
 
+  documentToDto(doc: NoteDocument): NoteDto {
+    return new NoteDto({
+      id: doc.id,
+      body: doc.body,
+      dateExpire: doc.dateExpire,
+      readAttemptsCount: doc.readAttemptsCount,
+    });
+  }
+
   getRandomKey(): string {
     const max = 100000;
     const min = 10000;
-    return '' + Math.random() * (max - min) + min;
+    return '' + Math.floor(Math.random() * (max - min) + min);
   }
 
   async cryptBody(body: string, key: string): Promise<string> {
