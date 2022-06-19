@@ -12,6 +12,14 @@ export class UsersService {
     @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
   ) {}
 
+  async findById(id: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({
+        _id: id,
+      })
+      .exec();
+  }
+
   async findOne(username: string): Promise<UserDocument | null> {
     return this.userModel
       .findOne({
