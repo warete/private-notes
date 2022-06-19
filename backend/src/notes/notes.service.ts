@@ -27,6 +27,14 @@ export class NotesService {
     return this.noteModel.find({ user: user.id }).exec();
   }
 
+  async getExpiredList(): Promise<NoteDocument[]> {
+    return this.noteModel
+      .find({
+        dateExpire: { $lt: new Date() },
+      })
+      .exec();
+  }
+
   async getById(id: string): Promise<NoteDocument> {
     return this.noteModel.findOne({ _id: id }).exec();
   }
